@@ -1,19 +1,33 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	// "github.com/pion/rtp"
+	// "github.com/pion/webrtc/v3/pkg/media"
+	// "github.com/pion/webrtc/v3/pkg/media/oggwriter"
 )
 
-func main() {
-	// set environment variables
-	config()
+var (
+	Token     string
+	ChannelID string
+	GuildID   string
+)
 
-	dg, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
+func init() {
+	flag.StringVar(&Token, "t", "", "Bot Token")
+	flag.StringVar(&GuildID, "g", "", "Guild in which voice channel exists")
+	flag.StringVar(&ChannelID, "c", "", "Voice channel to connect to")
+	flag.Parse()
+}
+
+func main() {
+	dg, err := discordgo.New("Bot " + Token)
 
 	if err != nil {
 		fmt.Println("error opening connection,", err)
@@ -31,7 +45,7 @@ func main() {
 
 	fmt.Println("bot is now running, press CTRL-C to exit.")
 
-	vc, err := connectToVoiceChannel(dg, os.Getenv("GUILD_ID"), os.Getenv("CHANNEL_ID"))
+	vc, err := connectToVoiceChannel(dg, GuildID, ChannelID)
 	if err != nil {
 		panic(err)
 	}
@@ -51,8 +65,8 @@ func main() {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// ignore own messages
 	if m.Author.ID == s.State.User.ID {
-		// ignore own messages
 		return
 	}
 
