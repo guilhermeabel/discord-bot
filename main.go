@@ -34,6 +34,11 @@ func main() {
 	fmt.Println("bot is now running, press CTRL-C to exit.")
 
 	vc, err := connectToVoiceChannel(dg, GuildID, ChannelID)
+	defer vc.Disconnect()
+
+	if err != nil {
+		panic(err)
+	}
 
 	app := &applicationServer{}
 	err = app.server().ListenAndServe()
