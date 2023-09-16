@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    environment:
+      - TOKEN=${TOKEN}
+      - GUILD=${GUILD}
+      - CHAT=${CHAT}
+
+  proxy:
+    image: caddy/caddy:alpine
+    ports:
+      - "5580:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - app

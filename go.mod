@@ -1,8 +1,9 @@
-module discord_bot
+module github.com/guilhermeabel/discord-bot
 
 go 1.20
 
 require (
+	github.com/alexedwards/flow v0.0.0-20220806114457-cf11be9e0e03
 	github.com/bwmarrin/discordgo v0.25.1
 	github.com/pion/rtp v1.8.1
 	github.com/pion/webrtc/v3 v3.2.19

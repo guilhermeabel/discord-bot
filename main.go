@@ -1,10 +1,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -15,19 +13,13 @@ import (
 )
 
 var (
-	Token     string
-	ChannelID string
-	GuildID   string
+	Token     string = os.Getenv("TOKEN")
+	ChannelID string = os.Getenv("CHAT")
+	GuildID   string = os.Getenv("GUILD")
 )
 
-func init() {
-	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.StringVar(&GuildID, "g", "", "Guild in which voice channel exists")
-	flag.StringVar(&ChannelID, "c", "", "Voice channel to connect to")
-	flag.Parse()
-}
-
 func main() {
+
 	dg, err := discordgo.New("Bot " + Token)
 
 	if err != nil {
@@ -44,41 +36,55 @@ func main() {
 		return
 	}
 
-	v, err := dg.ChannelVoiceJoin(GuildID, ChannelID, true, false)
-	if err != nil {
-		fmt.Println("failed to join voice channel:", err)
-		return
-	}
-
-	go func() {
-		time.Sleep(10 * time.Second)
-		close(v.OpusRecv)
-		v.Close()
-	}()
-
-	handleVoice(v.OpusRecv)
-
 	dg.AddHandler(messageCreate)
 
 	fmt.Println("bot is now running, press CTRL-C to exit.")
 
 	vc, err := connectToVoiceChannel(dg, GuildID, ChannelID)
+	defer vc.Disconnect()
+
 	if err != nil {
 		panic(err)
 	}
 
-	// on CTRL-C, close connection
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
 	go func() {
-		<-c
-		fmt.Println("closing connection")
-		vc.Disconnect()
-		dg.Close()
-		os.Exit(0)
+		time.Sleep(10 * time.Second)
+		close(vc.OpusRecv)
+		vc.Close()
 	}()
 
-	select {}
+	handleVoice(vc.OpusRecv)
+
+	app := &applicationServer{}
+	err = app.server().ListenAndServe()
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// ignore own messages
+	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	if strings.ToLower(m.Content) == "ping" {
+		s.ChannelMessageSend(m.ChannelID, "pong")
+	}
+
+	if strings.ToLower(m.Content) == "tic" {
+		s.ChannelMessageSend(m.ChannelID, "tac")
+	}
+}
+
+func connectToVoiceChannel(s *discordgo.Session, guildID, channelID string) (*discordgo.VoiceConnection, error) {
+	vc, err := s.ChannelVoiceJoin(guildID, channelID, false, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return vc, nil
 }
 
 func handleVoice(c chan *discordgo.Packet) {
@@ -118,28 +124,4 @@ func createPionRTPPacket(p *discordgo.Packet) *rtp.Packet {
 		},
 		Payload: p.Opus,
 	}
-}
-
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// ignore own messages
-	if m.Author.ID == s.State.User.ID {
-		return
-	}
-
-	if strings.ToLower(m.Content) == "ping" {
-		s.ChannelMessageSend(m.ChannelID, "pong")
-	}
-
-	if strings.ToLower(m.Content) == "tic" {
-		s.ChannelMessageSend(m.ChannelID, "tac")
-	}
-}
-
-func connectToVoiceChannel(s *discordgo.Session, guildID, channelID string) (*discordgo.VoiceConnection, error) {
-	vc, err := s.ChannelVoiceJoin(guildID, channelID, false, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return vc, nil
 }
